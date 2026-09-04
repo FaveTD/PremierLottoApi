@@ -1,0 +1,6 @@
+@PremierLottoApi_HostAddress = http://localhost:5178
+
+GET {{PremierLottoApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
