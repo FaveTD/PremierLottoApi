@@ -13,5 +13,6 @@ namespace PremierLottoApi.Data
         public DbSet<GameRound> GameRounds => Set<GameRound>();
         public DbSet<GameSession> GameSessions => Set<GameSession>();
         public DbSet<PlayerGuess> PlayerGuesses => Set<PlayerGuess>();
+        public DbSet<User> Users => Set<User>();
     }
 }

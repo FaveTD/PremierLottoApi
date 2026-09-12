@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PremierLottoApi.Data;
 using PremierLottoApi.DTOs;
@@ -17,6 +18,7 @@ namespace PremierLottoApi.Controllers
         /// <summary>
         /// Registers a new player after verifying they meet the minimum age requirement of 18.
         /// </summary>
+        [AllowAnonymous]
         [HttpPost("register")]
         public async Task<IActionResult> RegisterAndVerifyAge([FromBody] RegisterPlayerDto dto)
         {
@@ -57,6 +59,7 @@ namespace PremierLottoApi.Controllers
         /// <summary>
         /// Retrieves a complete list of all registered players.
         /// </summary>
+        [Authorize]
         [HttpGet]
         public async Task<IActionResult> GetAllPlayers()
         {
@@ -67,6 +70,7 @@ namespace PremierLottoApi.Controllers
         /// <summary>
         /// Retrieves a specific player's profile by their unique ID.
         /// </summary>
+        [Authorize]
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetPlayerById(int id)
         {
@@ -81,6 +85,7 @@ namespace PremierLottoApi.Controllers
         /// <summary>
         /// Retrieves a specific player's profile using their unique player alias.
         /// </summary>
+        [Authorize]
         [HttpGet("{playerAlias}")]
         public async Task<IActionResult> GetPlayerByAlias(string playerAlias)
         {
@@ -95,6 +100,7 @@ namespace PremierLottoApi.Controllers
         /// <summary>
         /// Checks and retrieves the current wallet balance and debt owed for a specific player alias.
         /// </summary>
+        [Authorize]
         [HttpGet("wallet")]
         public async Task<IActionResult> GetWalletByPlayerAlias(string playerAlias)
         {
@@ -118,6 +124,7 @@ namespace PremierLottoApi.Controllers
         /// <summary>
         /// Deletes a specific player account using their unique ID.
         /// </summary>
+        [Authorize]
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> DeletePlayer(int id)
         {
@@ -136,6 +143,7 @@ namespace PremierLottoApi.Controllers
         /// <summary>
         /// Deletes a specific player account using their unique user alias.
         /// </summary>
+        [Authorize]
         [HttpDelete("{playerAlias}")]
         public async Task<IActionResult> DeletePlayerByAlias(string playerAlias)
         {
@@ -156,6 +164,7 @@ namespace PremierLottoApi.Controllers
         /// <summary>
         /// Deletes all registered player accounts from the database.
         /// </summary>
+        [Authorize]
         [HttpDelete]
         public async Task<IActionResult> DeleteAllPlayers()
         {

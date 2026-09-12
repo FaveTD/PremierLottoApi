@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PremierLottoApi.DTOs;
 using PremierLottoApi.Models;
@@ -8,6 +9,7 @@ using System.Threading.Tasks;
 
 namespace PremierLottoApi.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class GameplayController : ControllerBase

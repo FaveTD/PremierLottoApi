@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using PremierLottoApi.DTOs;
 using PremierLottoApi.Services.Interfaces;
 
@@ -13,6 +14,7 @@ namespace PremierLottoApi.Controllers
         /// <summary>
         /// Creates a new game pool and automatically adds the creator as the first participant.
         /// </summary>
+        [Authorize]
         [HttpPost("create")]
         public async Task<IActionResult> CreatePool([FromBody] CreateGamePoolDto dto)
         {
@@ -37,6 +39,7 @@ namespace PremierLottoApi.Controllers
         /// <summary>
         /// Allows a player to join an existing game pool by providing their alias and stake amount.
         /// </summary>
+        [Authorize]
         [HttpPost("join")]
         public async Task<IActionResult> JoinPool(int poolId, [FromBody] PlayGameDto dto)
         {
@@ -70,6 +73,7 @@ namespace PremierLottoApi.Controllers
         /// <summary>
         /// Closes a game pool early and starts the game session, restricted to authorized players.
         /// </summary>
+        [Authorize]
         [HttpPost("start")]
         public async Task<IActionResult> ClosePoolEarly(int poolId, [FromQuery] string playerAlias)
         {
@@ -118,6 +122,7 @@ namespace PremierLottoApi.Controllers
         /// <summary>
         /// Retrieves all game pools associated with a specific player alias, also with an optional filter.
         /// </summary>
+        [Authorize]
         [HttpGet("{playerAlias}")]
         public async Task<IActionResult> GetPlayerPools(string playerAlias, [FromQuery] string? status)
         {
