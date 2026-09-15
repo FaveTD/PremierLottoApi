@@ -53,7 +53,8 @@ namespace PremierLottoApi.DTOs
     {
         public GameLevel GameType { get; set; }
         public string PlayerAlias { get; set; } = string.Empty;
-        public decimal StakeAmount { get; set; } = 200.00m;
+        [Range(200, double.MaxValue, ErrorMessage = "Minimum stake amount is 200.")]
+        public decimal StakeAmount { get; set; }
     }
     
 }

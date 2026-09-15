@@ -7,7 +7,7 @@ namespace PremierLottoApi.Services.Interfaces
     public interface IGameSessionService
     {
         Task<string> RegisterPlayerAsync(string legalName, string playerAlias, DateTime dateOfBirth);
-        Task<int> CreateGamePoolAsync(string gameType, string creatorAlias, decimal stakeAmount);
+        Task<object> CreateGamePoolAsync(string gameType, string creatorAlias, decimal stakeAmount);
         Task<object> JoinSpecificPoolAsync(int poolId, string playerAlias, decimal stakeAmount);
         Task<Player?> GetPlayerByAliasAsync(string playerAlias);
         Task<List<object>> GetAllPoolsWithParticipantsAsync(string? status = null);
@@ -17,6 +17,6 @@ namespace PremierLottoApi.Services.Interfaces
         Task InitializeGameSessionAsync(int poolId);
         Task<(PlayerGuess playerguess, int roundNumber, string sessionStatus, bool isTieBreaker)> SubmitRoundGuessesAsync(int poolId, string playerAlias, string rawGuesses);
         Task CheckAndAdvanceRoundAsync(int sessionId);
-        Task<List<object>> CalculateWinnersAndDistributePayoutsAsync(int sessionId);
+        Task<(List<object> winners, decimal rolledOverAmount)> CalculateWinnersAndDistributePayoutsAsync(int sessionId);
     }
 }

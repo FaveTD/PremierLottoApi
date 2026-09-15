@@ -94,8 +94,17 @@ namespace PremierLottoApi.Controllers
         {
             try
             {
-                var winners = await _gameSessionService.CalculateWinnersAndDistributePayoutsAsync(poolId);
+                var (winners, rollOverAmount) = await _gameSessionService.CalculateWinnersAndDistributePayoutsAsync(poolId);
 
+                if(rollOverAmount > 0)
+                {
+                    return Ok(new
+                    {
+                        status = "Rollover",
+                        message = $"Session #{poolId} evaluated, but no players met the winning threshold. The prize pool of ₦{rollOverAmount:N2} will roll over to the next session.",
+                        rolledOverAmount = rollOverAmount
+                    });
+                }
                 if (winners.Count == 0)
                 {
                     return Ok(new

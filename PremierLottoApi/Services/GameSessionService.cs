@@ -77,7 +77,7 @@ namespace PremierLottoApi.Services
             return wallet;
         }
 
-        public async Task<int> CreateGamePoolAsync(string gameType, string creatorAlias, decimal stakeAmount)
+        public async Task<object> CreateGamePoolAsync(string gameType, string creatorAlias, decimal stakeAmount)
         {
             var player = await _context.Players.SingleAsync(p => p.PlayerAlias.ToLower() == creatorAlias.ToLower());
 
@@ -93,11 +93,23 @@ namespace PremierLottoApi.Services
                 throw new InvalidOperationException("Insufficient wallet balance to create and join this pool.");
             }
 
+            decimal basePool = stakeAmount * 0.90m;
+
+            var rollover = await _context.JackpotRollovers
+                .FirstOrDefaultAsync(r => r.GameType == gameType);
+
+            decimal carriedIn = 0;
+            if(rollover != null && rollover.CarriedAmount > 0)
+            {
+                carriedIn = rollover.CarriedAmount;
+                rollover.CarriedAmount = 0;
+            }
+
             var newPool = new GamePool
             {
                 GameType = gameType,
                 Status = "Open",
-                TotalPrizePool = stakeAmount * 0.90m,
+                TotalPrizePool = basePool + carriedIn,
                 CreatedAt = DateTime.UtcNow,
                 CreatedByAlias = player.PlayerAlias
             };
@@ -119,7 +131,14 @@ namespace PremierLottoApi.Services
             await _context.GamePoolParticipants.AddAsync(participant);
             await _context.SaveChangesAsync();
 
-            return newPool.Id;
+            return new
+            {
+                poolId = newPool.Id,
+                message = carriedIn > 0
+                    ? $"Game pool #{newPool.Id} created successfully! A jackpot rollover of ₦{carriedIn:N2} was added to this pool."
+                    : $"Game pool #{newPool.Id} created successfully!",
+               
+            };
         }
 
         public async Task<object> JoinSpecificPoolAsync(int poolId, string playerAlias, decimal stakeAmount)
@@ -194,7 +213,7 @@ namespace PremierLottoApi.Services
 
             return new
             {
-                message = $"Successfully joined game pool #{pool.Id}!",
+                message = $"Successfully joined game pool #{pool.Id}! Total prize pool may include any applicable roll-overs.",
                 poolId = pool.Id,
                 poolStatus = pool.Status,
                 createdByAlias = pool.CreatedByAlias,
@@ -571,7 +590,7 @@ namespace PremierLottoApi.Services
             await _context.PlayerGuesses.AddAsync(playerGuess);
             await _context.SaveChangesAsync();
 
-            await CheckAndAdvanceRoundAsync(session.Id);
+            await CheckAndAdvanceRoundAsync(poolId);
 
             var updatedSession = await _context.GameSessions.FindAsync(session.Id);
 
@@ -707,7 +726,7 @@ namespace PremierLottoApi.Services
                         .OrderByDescending(x => x.TotalMatches)
                         .ToListAsync();
 
-                    if (topScores.Count >= 2 && topScores[0].TotalMatches == topScores[1].TotalMatches)
+                    if (topScores.Count >= 2 && topScores[0].TotalMatches == topScores[1].TotalMatches && topScores[0].TotalMatches > 0)
                     {
                         session.TotalRounds += 1;
                         session.CurrentRound += 1;
@@ -732,14 +751,14 @@ namespace PremierLottoApi.Services
             }
         }
 
-        public async Task<List<object>> CalculateWinnersAndDistributePayoutsAsync(int poolId)
+        public async Task<(List<object> winners, decimal rolledOverAmount)> CalculateWinnersAndDistributePayoutsAsync(int poolId)
         {
             var session = await _context.GameSessions
                 .FirstOrDefaultAsync(s => s.PoolId == poolId);
-            if (session == null) return new List<object>();
+            if (session == null) return (new List<object>(), 0);
 
             var pool = await _context.GamePools.FindAsync(poolId);
-            if (pool == null) return new List<object>();
+            if (pool == null) return (new List<object>(), 0);
 
             var playerScores = await _context.PlayerGuesses
                 .Where(pg => pg.GameSessionId == session.Id)
@@ -752,7 +771,31 @@ namespace PremierLottoApi.Services
                 .Where(x => x.TotalMatches > 0)
                 .ToListAsync();
 
-            if (!playerScores.Any()) return new List<object>();
+            if (!playerScores.Any())
+            {
+                decimal rolloverAmount = pool.TotalPrizePool;
+                var rollover = await _context.JackpotRollovers
+                    .FirstOrDefaultAsync(r => r.GameType == session.GameType);
+
+                if (rollover == null)
+                {
+                    rollover = new JackpotRollover
+                    {
+                        GameType = session.GameType,
+                        CarriedAmount = rolloverAmount
+                    };
+                    await _context.JackpotRollovers.AddAsync(rollover);
+                }
+                else
+                {
+                    rollover.CarriedAmount += rolloverAmount;
+                }
+
+                pool.TotalPrizePool = 0;
+                await _context.SaveChangesAsync();
+
+                return (new List<object>(), rolloverAmount);
+            }
 
             int highestScore = playerScores.Max(x => x.TotalMatches);
 
@@ -814,7 +857,7 @@ namespace PremierLottoApi.Services
                 await _context.SaveChangesAsync();
             }
 
-            return winnerDetails;
+            return (winnerDetails, 0);
         }
     }
 }

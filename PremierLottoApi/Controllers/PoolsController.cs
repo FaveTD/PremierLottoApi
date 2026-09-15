@@ -20,15 +20,9 @@ namespace PremierLottoApi.Controllers
         {
             try
             {
-                int poolId = await _gameSessionService.CreateGamePoolAsync(dto.GameType.ToString(), dto.PlayerAlias, dto.StakeAmount);
+               var result = await _gameSessionService.CreateGamePoolAsync(dto.GameType.ToString(), dto.PlayerAlias, dto.StakeAmount);
 
-                return StatusCode(201, new
-                {
-                    message = $"Game pool created successfully by {dto.PlayerAlias} and automatically joined!",
-                    poolId = poolId,
-                    gameType = dto.GameType.ToString(),
-                    creator = dto.PlayerAlias
-                });
+                return StatusCode(201, result);
             }
             catch (Exception ex)
             {
