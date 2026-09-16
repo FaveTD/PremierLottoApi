@@ -85,10 +85,11 @@ namespace PremierLottoApi.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
-        
+
         /// <summary>
         /// Calculates the final winners for the pool session and distributes the prize payouts.
         /// </summary>
+        [Authorize(AuthenticationSchemes = "ApiKey")]
         [HttpPost("distribute-prizes")]
         public async Task<IActionResult> ForceDistributePrizes(int poolId)
         {

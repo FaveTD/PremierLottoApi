@@ -5,11 +5,13 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using PremierLottoApi.Data;
 using PremierLottoApi.Repositories;
+using PremierLottoApi.Authentication;
 using PremierLottoApi.Services;
 using PremierLottoApi.Services.Interfaces;
 using Scalar.AspNetCore;
 using System.Text;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authentication;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -40,6 +42,8 @@ builder.Services.AddAuthentication(options =>
         };
 
     })
+    .AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>("BasicAuthentication", null)
+    .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>("ApiKey", null)
     .AddGoogle(GoogleOptions =>
     {
         GoogleOptions.ClientId = builder.Configuration["Authentication:Google:ClientId"];

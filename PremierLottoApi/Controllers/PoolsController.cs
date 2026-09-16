@@ -99,6 +99,7 @@ namespace PremierLottoApi.Controllers
         /// <summary>
         /// Retrieves all game pools, with an optional filter for their current status.
         /// </summary>
+        [AllowAnonymous]
         [HttpGet]
         public async Task<IActionResult> GetAllPools([FromQuery] string? status)
         {

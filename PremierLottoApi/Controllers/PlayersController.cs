@@ -124,7 +124,7 @@ namespace PremierLottoApi.Controllers
         /// <summary>
         /// Deletes a specific player account using their unique ID.
         /// </summary>
-        [Authorize]
+        [Authorize(AuthenticationSchemes ="BasicAuthentication")]
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> DeletePlayer(int id)
         {
@@ -143,7 +143,7 @@ namespace PremierLottoApi.Controllers
         /// <summary>
         /// Deletes a specific player account using their unique user alias.
         /// </summary>
-        [Authorize]
+        [Authorize(AuthenticationSchemes = "BasicAuthentication")]
         [HttpDelete("{playerAlias}")]
         public async Task<IActionResult> DeletePlayerByAlias(string playerAlias)
         {
@@ -164,7 +164,7 @@ namespace PremierLottoApi.Controllers
         /// <summary>
         /// Deletes all registered player accounts from the database.
         /// </summary>
-        [Authorize]
+        [Authorize(AuthenticationSchemes = "BasicAuthentication")]
         [HttpDelete]
         public async Task<IActionResult> DeleteAllPlayers()
         {
