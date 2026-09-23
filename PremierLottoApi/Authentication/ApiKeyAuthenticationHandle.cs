@@ -8,7 +8,7 @@ namespace PremierLottoApi.Authentication
     public class ApiKeyAuthenticationHandler : AuthenticationHandler<AuthenticationSchemeOptions>
     {
         private const string HeaderName = "x-api-key";
-        private readonly IConfiguration _configuration;
+        private readonly IConfiguration _config;
 
         public ApiKeyAuthenticationHandler(
             IOptionsMonitor<AuthenticationSchemeOptions> options,
@@ -16,7 +16,7 @@ namespace PremierLottoApi.Authentication
             UrlEncoder encoder,
             IConfiguration configuration) : base(options, logger, encoder)
         {
-            _configuration = configuration;
+            _config = configuration;
         }
 
         protected override Task<AuthenticateResult> HandleAuthenticateAsync()
@@ -26,7 +26,7 @@ namespace PremierLottoApi.Authentication
                 return Task.FromResult(AuthenticateResult.Fail("API Key was not provided."));
             }
 
-            var apiKey = _configuration["ApiKey"];
+            var apiKey = _config["ApiKey"];
             if (string.IsNullOrWhiteSpace(apiKey) || !apiKey.Equals(extractedApiKey))
             {
                 return Task.FromResult(AuthenticateResult.Fail("Invalid API Key."));

@@ -12,10 +12,12 @@ namespace PremierLottoApi.Services
     {
         private readonly AppDbContext _context;
         private const decimal MinStakeAmount = 200.00m;
+        private readonly ILogger<GameSessionService> _logger;
 
-        public GameSessionService(AppDbContext context)
+        public GameSessionService(AppDbContext context, ILogger<GameSessionService> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         public async Task<string> RegisterPlayerAsync(string legalName, string playerAlias, DateTime dateOfBirth)
@@ -44,6 +46,7 @@ namespace PremierLottoApi.Services
             await _context.Players.AddAsync(newPlayer);
             await _context.SaveChangesAsync();
 
+            _logger.LogInformation("New player registered. PlayerId={PlayerId}, Alias={Alias}", newPlayer.Id, newPlayer.PlayerAlias);
             return newPlayer.Id.ToString();
         }
 
@@ -131,6 +134,8 @@ namespace PremierLottoApi.Services
             await _context.GamePoolParticipants.AddAsync(participant);
             await _context.SaveChangesAsync();
 
+            _logger.LogInformation("Pool #{PoolId} created by {Alias} with stake ₦{Stake}", newPool.Id, player.PlayerAlias, stakeAmount);
+
             return new
             {
                 poolId = newPool.Id,
@@ -210,6 +215,8 @@ namespace PremierLottoApi.Services
             {
                 await _context.SaveChangesAsync();
             }
+
+            _logger.LogInformation("{Alias} joined pool #{PoolId} with stake ₦{Stake}", playerAlias, pool.Id, stakeAmount);
 
             return new
             {
@@ -407,6 +414,7 @@ namespace PremierLottoApi.Services
                 await _context.SaveChangesAsync();
             }
 
+            _logger.LogInformation("{Alias} staked ₦{Stake} in pool #{PoolId}. HouseProfit=₦{Profit}, DebtRecovered=₦{Debt}", playerAlias, stakeAmount, activePool.Id, realizedProfit, debtRecoveryAmount);
             return (activePool.Id, activePool.Status);
         }
         public async Task<(int PoolId, string PoolStatus, decimal TotalPrizePool, string Message)> ClosePoolEarlyAsync(int poolId, string playerAlias)
@@ -794,6 +802,8 @@ namespace PremierLottoApi.Services
                 pool.TotalPrizePool = 0;
                 await _context.SaveChangesAsync();
 
+                _logger.LogInformation("No winners for pool #{PoolId}. ₦{Amount} rolled over for {GameType}.", pool.Id, rolloverAmount, session.GameType);
+
                 return (new List<object>(), rolloverAmount);
             }
 
@@ -850,6 +860,7 @@ namespace PremierLottoApi.Services
                                 totalMatches = winnerScore.TotalMatches,
                                 prizeWon = prizePerWinner
                             });
+                            _logger.LogInformation("Payout: {Alias} won ₦{Prize} in pool #{PoolId} ({Matches} matches)", player.PlayerAlias, prizePerWinner, pool.Id, winnerScore.TotalMatches);
                         }
                     }
                 }

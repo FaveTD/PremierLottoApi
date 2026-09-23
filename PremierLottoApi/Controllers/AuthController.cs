@@ -15,11 +15,13 @@ namespace PremierLottoApi.Controllers
     {
         private readonly AppDbContext _context;
         private readonly JwtService _jwtService;
+        private readonly ILogger<AuthController> _logger;
 
-        public AuthController(AppDbContext context, JwtService jwtService)
+        public AuthController(AppDbContext context, JwtService jwtService, ILogger<AuthController> logger)
         {
             _context = context;
             _jwtService = jwtService;
+            _logger = logger;
         }
 
         [HttpPost("register")]
@@ -27,6 +29,7 @@ namespace PremierLottoApi.Controllers
         {
             if (await _context.Users.AnyAsync(u => u.Email == dto.Email))
             {
+                _logger.LogWarning("Registration rejected: email already exists ({Email})", dto.Email);
                 return BadRequest("User with this email already exists.");
             }
 
@@ -42,6 +45,8 @@ namespace PremierLottoApi.Controllers
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
+            _logger.LogInformation("New user registered. UserId={UserId}, Email={Email}", user.Id, user.Email);
+
             return Ok(new { message = "Registration successful!" });
         }
 
@@ -49,14 +54,22 @@ namespace PremierLottoApi.Controllers
         public async Task<IActionResult> Login([FromBody] LoginDto dto)
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
-            if (user == null) return Unauthorized("Invalid email or password.");
+            if (user == null)
+            {
+                _logger.LogWarning("Failed login: no user with email {Email}", dto.Email);
+                return Unauthorized("Invalid email or password.");
+            }
 
             using var hmac = new HMACSHA512(user.PasswordSalt);
             var computedHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(dto.Password));
 
             for (int i = 0; i < computedHash.Length; i++)
             {
-                if (computedHash[i] != user.PasswordHash[i]) return Unauthorized("Invalid email or password.");
+                if (computedHash[i] != user.PasswordHash[i])
+                {
+                    _logger.LogWarning("Failed login: wrong password for {Email}", dto.Email);
+                    return Unauthorized("Invalid email or password."); 
+                }
             }
 
             var accessToken = _jwtService.GenerateAccessToken(user.Id, user.Email);
@@ -65,6 +78,8 @@ namespace PremierLottoApi.Controllers
             user.RefreshToken = refreshToken;
             user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(_jwtService.RefreshTokenDays());
             await _context.SaveChangesAsync();
+
+            _logger.LogWarning("User logged in. UserId={UserId}", user.Id);
 
             return Ok(new AuthResponse
             {
@@ -79,6 +94,7 @@ namespace PremierLottoApi.Controllers
             var user = await _context.Users.FirstOrDefaultAsync(u => u.RefreshToken == dto.RefreshToken);
             if (user == null || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
             {
+                _logger.LogWarning("Refresh rejected: invalid or expired token.");
                 return Unauthorized("Invalid or expired refresh token.");
             }
 
@@ -88,6 +104,8 @@ namespace PremierLottoApi.Controllers
             user.RefreshToken = newRefreshToken;
             user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(_jwtService.RefreshTokenDays());
             await _context.SaveChangesAsync();
+
+            _logger.LogWarning("Refresh token rotated. UserId={UserId}", user.Id);
 
             return Ok(new AuthResponse
             {

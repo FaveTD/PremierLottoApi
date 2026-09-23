@@ -7,9 +7,16 @@ namespace PremierLottoApi.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class PoolsController(IGameSessionService gameSessionService) : ControllerBase
+    public class PoolsController: ControllerBase
     {
-        private readonly IGameSessionService _gameSessionService = gameSessionService;
+        private readonly IGameSessionService _gameSessionService;
+        private readonly ILogger<PoolsController> _logger;
+
+        public PoolsController(IGameSessionService gameSessionService, ILogger<PoolsController> logger)
+        {
+            _gameSessionService = gameSessionService;
+            _logger = logger;
+        }
 
         /// <summary>
         /// Creates a new game pool and automatically adds the creator as the first participant.
@@ -26,6 +33,7 @@ namespace PremierLottoApi.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Unhandled error in {Action}", nameof(CreatePool));
                 return BadRequest(new { message = ex.Message });
             }
         }
@@ -62,6 +70,11 @@ namespace PremierLottoApi.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unhandled error in {Action}", nameof(JoinPool));
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         /// <summary>
@@ -94,6 +107,11 @@ namespace PremierLottoApi.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unhandled error in {Action}", nameof(ClosePoolEarly));
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         /// <summary>
@@ -110,6 +128,7 @@ namespace PremierLottoApi.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Unhandled error in {Action}", nameof(GetAllPools));
                 return BadRequest(new { message = ex.Message });
             }
         }
@@ -128,6 +147,7 @@ namespace PremierLottoApi.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Unhandled error in {Action}", nameof(GetPlayerPools));
                 return BadRequest(new { message = ex.Message });
             }
         }

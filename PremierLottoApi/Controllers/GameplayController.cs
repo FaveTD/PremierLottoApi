@@ -15,10 +15,12 @@ namespace PremierLottoApi.Controllers
     public class GameplayController : ControllerBase
     {
         private readonly IGameSessionService _gameSessionService;
+        private readonly ILogger<GameplayController> _logger;
 
-        public GameplayController(IGameSessionService gameSessionService)
+        public GameplayController(IGameSessionService gameSessionService, ILogger<GameplayController> logger)
         {
             _gameSessionService = gameSessionService;
+            _logger = logger;
         }
 
         /// <summary>
@@ -50,6 +52,7 @@ namespace PremierLottoApi.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Unhandled error in {Action}", nameof(StakeGame));
                 return StatusCode(500, new { message = ex.Message });
             }
         }
@@ -82,6 +85,7 @@ namespace PremierLottoApi.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Unhandled error in {Action}", nameof(SubmitGuesses));
                 return BadRequest(new { message = ex.Message });
             }
         }
@@ -123,6 +127,7 @@ namespace PremierLottoApi.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Unhandled error in {Action}", nameof(ForceDistributePrizes));
                 return BadRequest(new { message = ex.Message });
             }
         }

@@ -10,10 +10,18 @@ namespace PremierLottoApi.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class PlayersController(AppDbContext context, IGameSessionService gameSessionService) : ControllerBase
+    public class PlayersController : ControllerBase
     {
-        private readonly AppDbContext _context = context;
-        private readonly IGameSessionService _gameSessionService = gameSessionService;
+        private readonly AppDbContext _context;
+        private readonly IGameSessionService _gameSessionService;
+        private readonly ILogger<PlayersController> _logger;
+
+        public PlayersController(AppDbContext context, IGameSessionService gameSessionService, ILogger<PlayersController> logger)
+        {
+            _context = context;
+            _gameSessionService = gameSessionService;
+            _logger = logger;
+        }
 
         /// <summary>
         /// Registers a new player after verifying they meet the minimum age requirement of 18.
@@ -53,6 +61,7 @@ namespace PremierLottoApi.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Unhandled error in {Action}", nameof(RegisterAndVerifyAge));
                 return BadRequest(new { message = ex.Message });
             }
         }

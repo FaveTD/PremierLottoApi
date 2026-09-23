@@ -16,11 +16,13 @@ namespace PremierLottoApi.Controllers
     {
         private readonly AppDbContext _context;
         private readonly JwtService _jwtService;
+        private readonly ILogger<ExternalAuthController> _logger;
 
-        public ExternalAuthController(AppDbContext context, JwtService jwtService)
+        public ExternalAuthController(AppDbContext context, JwtService jwtService, ILogger<ExternalAuthController> logger)
         {
             _context = context;
             _jwtService = jwtService;
+            _logger = logger;
         }
 
         [HttpGet("signin-google")]
@@ -40,8 +42,11 @@ namespace PremierLottoApi.Controllers
             var result = await HttpContext.AuthenticateAsync(GoogleDefaults.AuthenticationScheme);
 
             if (!result.Succeeded)
+            {
+                _logger.LogWarning("Google external authentication failed.");
                 return BadRequest("External authentication failed.");
-
+            }
+                
             var email = result.Principal.FindFirstValue(ClaimTypes.Email);
             var name = result.Principal.FindFirstValue(ClaimTypes.Name);
 
@@ -57,8 +62,13 @@ namespace PremierLottoApi.Controllers
                 };
                 _context.Users.Add(user);
                 await _context.SaveChangesAsync();
-            }
 
+                _logger.LogInformation("New user created via Google login. UserId={UserId}, Email={Email}", user.Id, email);
+            }
+            else
+            {
+                _logger.LogInformation("Existing user logged in via Google. UserId={UserId}", user.Id);
+            }
             var accessToken = _jwtService.GenerateAccessToken(user.Id, user.Email);
             var refreshToken = _jwtService.GenerateRefreshToken();
 
