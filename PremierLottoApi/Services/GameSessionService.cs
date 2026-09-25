@@ -1,4 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 using PremierLottoApi.Models;
 using PremierLottoApi.Utilities;
 using PremierLottoApi.Services.Interfaces;
@@ -13,11 +15,15 @@ namespace PremierLottoApi.Services
         private readonly AppDbContext _context;
         private const decimal MinStakeAmount = 200.00m;
         private readonly ILogger<GameSessionService> _logger;
+        private readonly IMemoryCache _cache;
+        private readonly PoolCacheInvalidator _poolCacheInvalidator;
 
-        public GameSessionService(AppDbContext context, ILogger<GameSessionService> logger)
+        public GameSessionService(AppDbContext context, ILogger<GameSessionService> logger, IMemoryCache cache, PoolCacheInvalidator poolCacheInvalidator)
         {
             _context = context;
             _logger = logger;
+            _cache = cache;
+            _poolCacheInvalidator = poolCacheInvalidator;
         }
 
         public async Task<string> RegisterPlayerAsync(string legalName, string playerAlias, DateTime dateOfBirth)
@@ -133,7 +139,7 @@ namespace PremierLottoApi.Services
 
             await _context.GamePoolParticipants.AddAsync(participant);
             await _context.SaveChangesAsync();
-
+            _poolCacheInvalidator.InvalidatePoolsCache();
             _logger.LogInformation("Pool #{PoolId} created by {Alias} with stake ₦{Stake}", newPool.Id, player.PlayerAlias, stakeAmount);
 
             return new
@@ -215,6 +221,7 @@ namespace PremierLottoApi.Services
             {
                 await _context.SaveChangesAsync();
             }
+            _poolCacheInvalidator.InvalidatePoolsCache();
 
             _logger.LogInformation("{Alias} joined pool #{PoolId} with stake ₦{Stake}", playerAlias, pool.Id, stakeAmount);
 
@@ -238,6 +245,14 @@ namespace PremierLottoApi.Services
                 {
                     throw new ArgumentException("Invalid status filter. Allowed values are 'Open' or 'Locked'.");
                 }
+            }
+
+            string cacheKey = PoolCacheInvalidator.BuildCacheKey(status);
+
+            if(_cache.TryGetValue(cacheKey, out List<object>? cachedPools))
+            {
+                _logger.LogInformation("Serving pools from cache. Key={CacheKey}", cacheKey);
+                return cachedPools;
             }
 
             var query = _context.GamePools
@@ -277,6 +292,9 @@ namespace PremierLottoApi.Services
                     participants = playerDetails
                 });
             }
+
+            _cache.Set(cacheKey, responseList, TimeSpan.FromSeconds(60));
+            _logger.LogInformation("Cached pools results. Key={CacheKey}", cacheKey);
 
             return responseList;
         }
@@ -413,7 +431,7 @@ namespace PremierLottoApi.Services
             {
                 await _context.SaveChangesAsync();
             }
-
+            _poolCacheInvalidator.InvalidatePoolsCache();
             _logger.LogInformation("{Alias} staked ₦{Stake} in pool #{PoolId}. HouseProfit=₦{Profit}, DebtRecovered=₦{Debt}", playerAlias, stakeAmount, activePool.Id, realizedProfit, debtRecoveryAmount);
             return (activePool.Id, activePool.Status);
         }
@@ -460,6 +478,7 @@ namespace PremierLottoApi.Services
             await InitializeGameSessionAsync(pool.Id);
 
             await _context.SaveChangesAsync();
+            _poolCacheInvalidator.InvalidatePoolsCache();
 
             return (pool.Id, pool.Status, pool.TotalPrizePool, $"Pool #{pool.Id} successfully closed early with {participantCount} participants!");
         }
@@ -801,7 +820,7 @@ namespace PremierLottoApi.Services
 
                 pool.TotalPrizePool = 0;
                 await _context.SaveChangesAsync();
-
+                _poolCacheInvalidator.InvalidatePoolsCache();
                 _logger.LogInformation("No winners for pool #{PoolId}. ₦{Amount} rolled over for {GameType}.", pool.Id, rolloverAmount, session.GameType);
 
                 return (new List<object>(), rolloverAmount);
@@ -866,6 +885,7 @@ namespace PremierLottoApi.Services
                 }
 
                 await _context.SaveChangesAsync();
+                _poolCacheInvalidator.InvalidatePoolsCache();
             }
 
             return (winnerDetails, 0);

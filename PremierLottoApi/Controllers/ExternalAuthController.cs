@@ -39,48 +39,61 @@ namespace PremierLottoApi.Controllers
         [HttpGet("complete-google-login")]
         public async Task<IActionResult> CompleteGoogleLogin()
         {
-            var result = await HttpContext.AuthenticateAsync(GoogleDefaults.AuthenticationScheme);
-
-            if (!result.Succeeded)
+            try
             {
-                _logger.LogWarning("Google external authentication failed.");
-                return BadRequest("External authentication failed.");
-            }
-                
-            var email = result.Principal.FindFirstValue(ClaimTypes.Email);
-            var name = result.Principal.FindFirstValue(ClaimTypes.Name);
+                var result = await HttpContext.AuthenticateAsync(GoogleDefaults.AuthenticationScheme);
 
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
-            if (user == null)
-            {
-                user = new User
+                if (!result.Succeeded || result.Principal == null)
                 {
-                    Id = Guid.NewGuid(),
-                    Email = email,
-                    PasswordHash = new byte[0], 
-                    PasswordSalt = new byte[0]
-                };
-                _context.Users.Add(user);
+                    _logger.LogWarning("Google external authentication failed or session was missing.");
+                    return BadRequest("External authentication failed. Please start from the login route.");
+                }
+
+                var email = result.Principal.FindFirstValue(ClaimTypes.Email);
+                var name = result.Principal.FindFirstValue(ClaimTypes.Name);
+
+                if (string.IsNullOrEmpty(email))
+                {
+                    return BadRequest("Unable to retrieve email from Google account.");
+                }
+
+                var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+                if (user == null)
+                {
+                    user = new User
+                    {
+                        Id = Guid.NewGuid(),
+                        Email = email,
+                        PasswordHash = new byte[0],
+                        PasswordSalt = new byte[0]
+                    };
+                    _context.Users.Add(user);
+                    await _context.SaveChangesAsync();
+
+                    _logger.LogInformation("New user created via Google login. UserId={UserId}, Email={Email}", user.Id, email);
+                }
+                else
+                {
+                    _logger.LogInformation("Existing user logged in via Google. UserId={UserId}", user.Id);
+                }
+                var accessToken = _jwtService.GenerateAccessToken(user.Id, user.Email);
+                var refreshToken = _jwtService.GenerateRefreshToken();
+
+                user.RefreshToken = refreshToken;
+                user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(_jwtService.RefreshTokenDays());
                 await _context.SaveChangesAsync();
 
-                _logger.LogInformation("New user created via Google login. UserId={UserId}, Email={Email}", user.Id, email);
+                return Ok(new AuthResponse
+                {
+                    AccessToken = accessToken,
+                    RefreshToken = refreshToken
+                });
             }
-            else
+            catch (Exception ex)
             {
-                _logger.LogInformation("Existing user logged in via Google. UserId={UserId}", user.Id);
+                _logger.LogError(ex, "An error occurred during Google login completion.");
+                return StatusCode(500, $"Internal server error: {ex.Message}.");
             }
-            var accessToken = _jwtService.GenerateAccessToken(user.Id, user.Email);
-            var refreshToken = _jwtService.GenerateRefreshToken();
-
-            user.RefreshToken = refreshToken;
-            user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(_jwtService.RefreshTokenDays());
-            await _context.SaveChangesAsync();
-
-            return Ok(new AuthResponse
-            {
-                AccessToken = accessToken,
-                RefreshToken = refreshToken
-            });
         }
     }
 }

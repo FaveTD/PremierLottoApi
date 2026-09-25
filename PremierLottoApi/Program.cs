@@ -8,6 +8,7 @@ using PremierLottoApi.Repositories;
 using PremierLottoApi.Authentication;
 using PremierLottoApi.Services;
 using PremierLottoApi.Services.Interfaces;
+using PremierLottoApi.Utilities;
 using Scalar.AspNetCore;
 using System.Text;
 using System.Text.Json.Serialization;
@@ -58,6 +59,8 @@ builder.Services.AddOpenApi();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<PoolCacheInvalidator>();
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<IWalletRepository, WalletRepository>(); 
 builder.Services.AddScoped<IGameSessionService, GameSessionService>();
